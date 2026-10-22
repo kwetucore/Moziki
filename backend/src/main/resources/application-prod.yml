@@ -1,0 +1,17 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+moziki:
+  demo-data:
+    enabled: false
+  jwt:
+    secret: ${MOZIKI_JWT_SECRET}
+  cors:
+    allowed-origins: ${MOZIKI_CORS_ORIGINS}
+
+logging:
+  level:
+    root: INFO
+    cd.moziki: INFO

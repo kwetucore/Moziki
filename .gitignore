@@ -1,0 +1,40 @@
+# --- Environment / secrets -------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+
+# --- Local PostgreSQL cluster (scripts/dev-db.sh) --------------------------
+.data/
+*.log
+
+# --- Java / Maven ----------------------------------------------------------
+backend/target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# --- Node / Vite -----------------------------------------------------------
+frontend/node_modules/
+frontend/dist/
+frontend/dev-dist/
+frontend/.vite/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- IDE / OS --------------------------------------------------------------
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# --- Test output -----------------------------------------------------------
+coverage/
+playwright-report/
+test-results/
+
+# --- Agent workspace metadata ------------------------------------------------
+.freebuff/

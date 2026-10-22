@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    url: ${MOZIKI_DB_TEST_URL:jdbc:postgresql://127.0.0.1:5434/moziki_test}
+    username: ${MOZIKI_DB_USER:moziki}
+    password: ${MOZIKI_DB_PASSWORD:moziki}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    clean-disabled: false
+    clean-on-validation-error: true
+  messages:
+    fallback-to-system-locale: false
+
+moziki:
+  jwt:
+    secret: test-secret-0123456789abcdef0123456789abcdef
+    ttl-minutes: 60
+  security:
+    bcrypt-strength: 4
+  demo-data:
+    enabled: false
+  cors:
+    allowed-origins: http://localhost:5173
+
+logging:
+  level:
+    root: WARN
+    cd.moziki: INFO
+    org.flywaydb: INFO

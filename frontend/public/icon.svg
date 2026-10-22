@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Moziki">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#163b2e"/>
+      <stop offset="1" stop-color="#071a14"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0d998"/>
+      <stop offset="1" stop-color="#c88a2b"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="176" fill="none" stroke="#2d5644" stroke-width="3" stroke-dasharray="2 14" stroke-linecap="round"/>
+  <path d="M140 340V196l58 76 58-76v144" fill="none" stroke="#f7f5ef" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M284 340V196l44 58 44-58v144" fill="none" stroke="url(#gold)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="256" cy="120" r="10" fill="#d9a441"/>
+</svg>

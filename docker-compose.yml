@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: moziki-postgres
+    environment:
+      POSTGRES_USER: moziki
+      POSTGRES_PASSWORD: moziki
+      POSTGRES_DB: moziki
+    ports:
+      # Non-default host port so an existing PostgreSQL install is untouched.
+      - "5434:5432"
+    volumes:
+      - moziki_pgdata:/var/lib/postgresql/data
+      - ./scripts/docker-initdb.sql:/docker-entrypoint-initdb.d/01-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moziki -d moziki"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  moziki_pgdata:
