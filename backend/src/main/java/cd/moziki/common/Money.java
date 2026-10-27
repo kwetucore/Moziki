@@ -31,6 +31,23 @@ public final class Money {
         }
     }
 
+    /**
+     * Counted cash can legitimately be zero (an empty cash box), unlike a
+     * ledger posting. Negative counts are never valid.
+     */
+    public static long toNonNegativeMinor(BigDecimal amount) {
+        if (amount == null) {
+            throw ApiException.badRequest("AMOUNT_REQUIRED", "error.ledger.invalid_amount");
+        }
+        if (amount.signum() < 0) {
+            throw ApiException.badRequest("AMOUNT_INVALID", "error.reconciliation.negative_count");
+        }
+        if (amount.signum() == 0) {
+            return 0L;
+        }
+        return toMinor(amount);
+    }
+
     public static BigDecimal toDecimal(long minor) {
         return BigDecimal.valueOf(minor).movePointLeft(SCALE).setScale(SCALE, RoundingMode.UNNECESSARY);
     }

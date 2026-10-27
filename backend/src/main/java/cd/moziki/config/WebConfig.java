@@ -9,6 +9,7 @@ import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.util.List;
 import java.util.Locale;
 
@@ -36,6 +37,12 @@ public class WebConfig {
         resolver.setSupportedLocales(SUPPORTED_LOCALES);
         resolver.setDefaultLocale(Locale.FRENCH);
         return resolver;
+    }
+
+    /** One clock for business-date and lock decisions; tests can replace it. */
+    @Bean
+    public Clock clock() {
+        return Clock.systemUTC();
     }
 
     /** Lets Jakarta Validation messages ({validation.*}) resolve from our i18n bundles. */

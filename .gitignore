@@ -31,6 +31,9 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
+# --- Uploaded evidence (local storage) -------------------------------------
+backend/data/
+
 # --- Test output -----------------------------------------------------------
 coverage/
 playwright-report/

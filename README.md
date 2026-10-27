@@ -25,19 +25,21 @@ Moziki is a web PWA plus a double-entry ledger API. It records savings, share pu
 │   ├── src/main/java/cd/moziki/
 │   │   ├── auth/          # login, JWT, current user
 │   │   ├── ledger/        # DoubleEntryValidator, LedgerService, queries
-│   │   ├── account/       # chart of accounts, balances, reconciliation
+│   │   ├── account/       # chart of accounts, balances, balance reconciliation
+│   │   ├── reconciliation/# daily cash/mobile-money counts and discrepancy engine
+│   │   ├── transparency/  # member-safe accountability summary
 │   │   ├── member/        # onboarding, member directory
 │   │   ├── audit/         # append-only audit trail
 │   │   ├── dashboard/     # cooperative aggregates
 │   │   ├── ussd/          # session model for the future feature-phone channel
 │   │   └── config/        # security, CORS, i18n, locale resolution
 │   ├── src/main/resources/
-│   │   ├── db/migration/V1__init.sql     # full schema + integrity triggers
+│   │   ├── db/migration/                 # V1 schema/triggers, V2 cash reconciliation
 │   │   └── i18n/messages_{en,fr,sw}.properties
 │   └── src/test/          # unit + real-PostgreSQL integration tests
 ├── frontend/
 │   ├── src/locales/{en,fr,sw}.json       # product dictionaries
-│   ├── src/pages/                        # dashboard, transactions, members, accounts, audit
+│   ├── src/pages/                        # dashboard, transactions, members, accounts, accountability, audit
 │   ├── src/lib/offlineQueue.ts           # IndexedDB queue + safe replay
 │   └── src/lib/api.ts
 ├── scripts/
@@ -128,6 +130,10 @@ Environment variables (see [`.env.example`](.env.example)):
 | `MOZIKI_CORS_ORIGINS` | `http://localhost:5173,...` | Allowed browser origins |
 | `MOZIKI_DEMO_DATA` | `true` | Seed demo cooperative (dev only) |
 | `MOZIKI_DEMO_PASSWORD` | `Moziki2026!` | Demo password |
+| `MOZIKI_RECONCILIATION_LOCK_HOUR` | `12` | Local hour on the following day when a completed business day locks |
+| `MOZIKI_RECONCILIATION_BACKFILL_DAYS` | `7` | Absolute ceiling on backdating; the end-of-day lock is stricter |
+| `MOZIKI_EVIDENCE_DIR` | `./data/evidence` | Directory for photos/receipts (use a shared volume or object storage in production) |
+| `MOZIKI_EVIDENCE_MAX_BYTES` | `5242880` | Maximum size of one evidence file (5 MB) |
 | `MOZIKI_PORT` | `8080` | API port |
 
 Spring Boot does not load `.env` automatically; export the variables in your shell or use your process manager/secret store. Defaults are intentionally aligned with the local dev cluster.
@@ -185,9 +191,36 @@ Then PostgreSQL independently verifies the same invariants. The deferred constra
 - Corrections are **reversals**: a new `REVERSAL` transaction mirrors the original lines, points back via `reverses_transaction_id`, and the original remains visible with status `REVERSED`.
 - `audit_logs` is append-only, including for leaders.
 
-### Reconciliation
+### Internal balance reconciliation
 
 The cached `accounts.balance_minor` is updated atomically with the ledger lines. Auditors and leaders can verify it against a live SQL aggregate over `ledger_entries` through `GET /api/accounts/reconciliation` (backed by the `v_account_ledger_balances` view). The integration suite asserts every account stays consistent.
+
+### Daily cash & mobile-money reconciliation
+
+At the end of the business day a leader declares the physical cash and the Airtel, Orange and M-Pesa balances they actually counted. `POST /api/reconciliations` compares those counts with a fresh journal aggregate, not with the cached balance:
+
+```bash
+curl -X POST http://localhost:8080/api/reconciliations \
+  -H "Authorization: Bearer $LEADER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "businessDate": "2026-10-22",
+    "countedCash": "34500.00",
+    "countedAirtel": "40000.00",
+    "countedOrange": "25000.00",
+    "countedMpesa": "0.00",
+    "notes": "Comptage de fin de journée"
+  }'
+```
+
+- The report freezes `book_*` balances, counted amounts and per-bucket differences, so later postings cannot rewrite history.
+- A day is `BALANCED` only when **all four buckets** match. Offsetting differences (cash short, Airtel over) remain a `DISCREPANCY` even if the net total is zero.
+- Reports are append-only. A first submission is authoritative immediately. A correction for the same business date creates revision `n+1` with `supersedes_id` pointing at the prior report and stays **pending auditor review**; the previous approved revision remains authoritative until it is approved. A rejected correction can be replaced by a new revision, and only one correction can be pending per day.
+- Business dates follow the cooperative timezone, never future-dated. Today is always open; a completed day stays open until `MOZIKI_RECONCILIATION_LOCK_HOUR` (default `12:00`) the following morning, then locks automatically. `MOZIKI_RECONCILIATION_BACKFILL_DAYS` is an absolute ceiling and can only make the lock stricter.
+- A leader can attach up to five photos/receipts (JPEG, PNG, WebP or PDF, 5 MB each) to a count. Files are content-validated, SHA-256 hashed, stored under `MOZIKI_EVIDENCE_DIR` with opaque keys and served only to signed-in members of the same cooperative. Evidence rows are append-only.
+- Every submission, correction, review decision and evidence upload writes to `audit_logs` with actor, IP, user agent and a machine-readable summary.
+
+`GET /api/transparency/summary` is open to every signed-in member. It exposes ledger balances, the latest **approved** count, recent revisions with their review state and evidence names, 30-day metrics, the number of pending corrections and sanitized recent audit events — but never IP addresses, user agents or raw audit metadata. Pending and rejected corrections stay visible but never move the member-facing discrepancy metrics. Only leaders can submit or attach evidence; only auditors can approve/reject corrections; leaders and auditors can read the full history through `GET /api/reconciliations`.
 
 ---
 
@@ -201,7 +234,11 @@ The cached `accounts.balance_minor` is updated atomically with the ledger lines.
 | Post transactions / reversals | — | ✅ | — |
 | Onboard members | — | ✅ | — |
 | View member directory | — | ✅ | ✅ |
-| View audit trail / reconciliation | — | ✅ | ✅ |
+| View internal audit trail / balance reconciliation | — | ✅ | ✅ |
+| Submit the daily cash & mobile-money count | — | ✅ | — |
+| Attach proof (photo/receipt) to a count | — | ✅ | — |
+| Approve or reject a correction | — | — | ✅ |
+| View accountability metrics, cash-count history and proof | ✅ | ✅ | ✅ |
 
 Authorization is enforced server-side with Spring Security method annotations (`@PreAuthorize`) and additionally scoped in queries (a member can only read their own transaction details; probing another reference returns 404). Roles live in the `users.role` column (`MEMBER`, `LEADER`, `AUDITOR`).
 
@@ -232,7 +269,7 @@ Account names in the database keep their French labels because they are business
 ## 6. Offline-first PWA
 
 - The app shell and build assets are precached by Workbox; the app opens without a network.
-- Authorized GET responses (`dashboard`, `accounts`, `transactions`, `members`, `audit`) use a `NetworkFirst` cache with a 4-second network timeout and a 24-hour expiry. The API cache is cleared on sign-out and whenever the login screen is shown, so one member's ledger is never served to the next.
+- Authorized GET responses (`dashboard`, `accounts`, `transactions`, `members`, `audit`, `transparency`) use a `NetworkFirst` cache with a 4-second network timeout and a 24-hour expiry. The API cache is cleared on sign-out and whenever the login screen is shown, so one member's ledger is never served to the next.
 - The signed-in profile is cached in `localStorage` (`moziki.session`). Opening the PWA without a network keeps the session and the last cached ledger instead of signing the user out; `/auth/me` refreshes the profile on the next connection.
 - A transaction submitted offline — or while the API is unreachable through a gateway (502/503/504) — is written to an **IndexedDB** queue (`moziki-offline`). Each payload is generated with a UUID `idempotencyKey`.
 - The queue is replayed in order on app start (when online), when the browser emits `online`, and on an explicit retry. The server treats a repeated idempotency key as the same operation, so a retry after an ambiguous network failure can never double-post. Non-retryable 4xx responses are dropped from the queue; network/5xx failures stop the sync and keep the work.
@@ -261,6 +298,13 @@ All endpoints are under `/api`. Authentication is `Authorization: Bearer <JWT>`.
 | `GET` | `/members` | Leader, Auditor | Member directory with balances |
 | `POST` | `/members` | Leader | Onboard a member and open savings/shares accounts |
 | `GET` | `/audit?page=&size=` | Leader, Auditor | Audit trail |
+| `POST` | `/reconciliations` | Leader | Submit today's cash/mobile-money count or a correction |
+| `GET` | `/reconciliations?page=&size=` | Leader, Auditor | Cash-count history, including revisions and review state |
+| `GET` | `/reconciliations/{id}` | Leader, Auditor | One report with review decision and evidence metadata |
+| `POST` | `/reconciliations/{id}/review` | Auditor | Approve or reject a correction (a reason is required to reject) |
+| `POST` | `/reconciliations/{id}/evidence` | Leader | Attach a photo/receipt (`multipart/form-data`, field `file`) |
+| `GET` | `/reconciliations/{id}/evidence/{evidenceId}` | any role | Download/view proof within the cooperative |
+| `GET` | `/transparency/summary` | any role | Member-safe accountability metrics, pending corrections and evidence names |
 
 Example posting:
 
@@ -301,10 +345,11 @@ Bean Validation failures add a `fieldErrors` map.
 ./scripts/backend-test.sh
 ```
 
-This starts the portable database and runs:
+This starts the portable database and runs **36 tests**:
 
-- **Unit:** strict money conversion, DRC phone normalization, double-entry structural rules.
-- **Integration (real PostgreSQL):** Flyway schema, posting a balanced deposit and cached balances, **direct SQL insertion of an unbalanced entry rejected by the deferred trigger**, update/delete attempts rejected by append-only triggers, idempotency replay, insufficient-funds rollback, reversal history and balance restoration, share purchases, JWT/RBAC over HTTP, localized errors in FR/SW/EN, audit trail and reconciliation.
+- **Unit:** strict money conversion, DRC phone normalization, double-entry structural rules, and per-bucket discrepancy logic (including offsetting differences).
+- **Integration (real PostgreSQL):** Flyway schema, posting a balanced deposit and cached balances, **direct SQL insertion of an unbalanced entry rejected by the deferred trigger**, update/delete attempts rejected by append-only triggers, idempotency replay, insufficient-funds rollback, reversal history and balance restoration, share purchases, JWT/RBAC over HTTP, localized errors in FR/SW/EN, audit trail and internal balance reconciliation.
+- **Reconciliation integration:** balanced and discrepant daily counts, frozen book snapshots, correction revisions, member transparency without IP/metadata, leader-only submission, future-date rejection, and database-level immutability of both `cash_reconciliations` and `audit_logs`.
 
 Frontend verification:
 
@@ -345,5 +390,7 @@ Before a real deployment:
 - Single cooperative per user; multi-cooperative membership is a later schema change (`memberships` table).
 - Loan schedules, interest accrual and per-member loan subledgers are not modelled yet; disbursements/repayments use the aggregate loans receivable account.
 - No statement export (PDF/CSV) or SMS notifications.
+- Daily cash counts now have photo/receipt evidence, an automatic end-of-day lock and auditor approval for corrections, but no reminder notification before the lock and no OCR/automated validation of the uploaded proof.
+- Evidence uses local disk storage by default; a multi-instance deployment needs a shared volume or an object-storage replacement for `EvidenceStorageService`.
 - Background Sync API is not enabled; the offline queue flushes while the app is open (or on next launch).
 - No login rate limiting / account lockout yet.

@@ -34,6 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/transactions', labelKey: 'nav.transactions', icon: LedgerIcon },
   { to: '/members', labelKey: 'nav.members', icon: UsersIcon, roles: ['LEADER', 'AUDITOR'] },
   { to: '/accounts', labelKey: 'nav.accounts', icon: WalletIcon },
+  { to: '/accountability', labelKey: 'nav.accountability', icon: ShieldIcon },
   { to: '/audit', labelKey: 'nav.audit', icon: ShieldIcon, roles: ['LEADER', 'AUDITOR'] },
 ];
 

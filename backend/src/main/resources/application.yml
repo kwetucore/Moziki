@@ -34,6 +34,10 @@ spring:
     default-property-inclusion: non_null
     serialization:
       write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 20MB
   messages:
     basename: i18n/messages
     encoding: UTF-8
@@ -42,6 +46,9 @@ spring:
     timeout-per-shutdown-phase: 20s
 
 moziki:
+  health:
+    events:
+      retention-days: ${MOZIKI_HEALTH_EVENTS_RETENTION_DAYS:30}
   jwt:
     # MUST be overridden in every deployed environment (32+ bytes for HS256).
     secret: ${MOZIKI_JWT_SECRET:dev-only-insecure-secret-please-change-0123456789abcdef}
@@ -54,6 +61,15 @@ moziki:
   ledger:
     # Coop currency is currently single-currency. Multi-currency is a later phase.
     currency: CDF
+  reconciliation:
+    # A completed day stays open until this local hour the following morning,
+    # then locks automatically. Today is always open.
+    lock-hour: ${MOZIKI_RECONCILIATION_LOCK_HOUR:12}
+    # Absolute ceiling; the end-of-day lock can only be stricter than this.
+    max-backfill-days: ${MOZIKI_RECONCILIATION_BACKFILL_DAYS:7}
+    # Photo/receipt evidence. Use a shared volume or object storage in production.
+    evidence-dir: ${MOZIKI_EVIDENCE_DIR:./data/evidence}
+    evidence-max-bytes: ${MOZIKI_EVIDENCE_MAX_BYTES:5242880}
 
 logging:
   level:

@@ -3,6 +3,7 @@ import type {
   Account,
   AuditEntry,
   AuthResponse,
+  CashReconciliation,
   Cooperative,
   CreateMemberPayload,
   Dashboard,
@@ -10,8 +11,12 @@ import type {
   Member,
   PageResponse,
   PostTransactionPayload,
+  ReconciliationEvidence,
   ReconciliationRow,
+  ReviewReconciliationPayload,
   Role,
+  SubmitReconciliationPayload,
+  TransparencySummary,
   Transaction,
   UserProfile,
 } from './types';
@@ -52,7 +57,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
-  if (init.body && !headers.has('Content-Type')) {
+  const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData;
+  if (init.body && !isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
   headers.set('Accept', 'application/json');
@@ -93,6 +99,41 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     return undefined as T;
   }
   return (await response.json()) as T;
+}
+
+/** Authenticated binary fetch for evidence files; the JWT cannot ride on an <a href>. */
+async function requestBlob(path: string): Promise<Blob> {
+  const headers = new Headers();
+  const token = getToken();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  headers.set('Accept-Language', localStorage.getItem(LANG_KEY) || 'fr');
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, { headers });
+  } catch {
+    throw new ApiError(i18n.t('common.networkError'), 0, 'NETWORK_ERROR');
+  }
+
+  if (!response.ok) {
+    let payload: { message?: string; code?: string } = {};
+    try {
+      payload = await response.json();
+    } catch {
+      // Binary endpoint may fail with HTML from a proxy.
+    }
+    if (response.status === 401) {
+      window.dispatchEvent(new Event('moziki:unauthorized'));
+    }
+    throw new ApiError(
+      payload.message || `Request failed (${response.status})`,
+      response.status,
+      payload.code,
+    );
+  }
+  return response.blob();
 }
 
 function queryString(params: Record<string, string | number | undefined>): string {
@@ -167,6 +208,52 @@ export const api = {
 
   audit(page = 0, size = 30): Promise<PageResponse<AuditEntry>> {
     return request<PageResponse<AuditEntry>>(`/audit${queryString({ page, size })}`);
+  },
+
+  reconciliations(page = 0, size = 20): Promise<PageResponse<CashReconciliation>> {
+    return request<PageResponse<CashReconciliation>>(
+      `/reconciliations${queryString({ page, size })}`,
+    );
+  },
+
+  submitReconciliation(payload: SubmitReconciliationPayload): Promise<CashReconciliation> {
+    return request<CashReconciliation>('/reconciliations', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  reviewReconciliation(
+    id: string,
+    payload: ReviewReconciliationPayload,
+  ): Promise<CashReconciliation> {
+    return request<CashReconciliation>(`/reconciliations/${encodeURIComponent(id)}/review`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  uploadEvidence(reportId: string, file: File): Promise<ReconciliationEvidence> {
+    const body = new FormData();
+    body.append('file', file);
+    return request<ReconciliationEvidence>(
+      `/reconciliations/${encodeURIComponent(reportId)}/evidence`,
+      { method: 'POST', body },
+    );
+  },
+
+  evidenceBlob(reportId: string, evidenceId: string): Promise<Blob> {
+    return requestBlob(
+      `/reconciliations/${encodeURIComponent(reportId)}/evidence/${encodeURIComponent(evidenceId)}`,
+    );
+  },
+
+  transparency(): Promise<TransparencySummary> {
+    return request<TransparencySummary>('/transparency/summary');
+  },
+
+  lockStatus(): Promise<{ beforeLock: boolean; lockHour: number }> {
+    return request<{ beforeLock: boolean; lockHour: number; }>('/transparency/lock-status');
   },
 };
 

@@ -43,7 +43,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
-            urlPattern: /\/api\/(dashboard|accounts|transactions|members|audit).*/,
+            urlPattern: /\/api\/(dashboard|accounts|transactions|members|audit|transparency).*/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'moziki-api',

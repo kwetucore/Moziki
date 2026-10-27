@@ -22,6 +22,9 @@ moziki:
     enabled: false
   cors:
     allowed-origins: http://localhost:5173
+  reconciliation:
+    lock-hour: 12
+    evidence-dir: target/test-evidence
 
 logging:
   level:

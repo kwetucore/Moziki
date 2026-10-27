@@ -116,6 +116,9 @@ public class GlobalExceptionHandler {
         } else if (rootMessage.contains("member_number")) {
             code = "MEMBER_NUMBER_EXISTS";
             key = "error.member.number_exists";
+        } else if (rootMessage.contains("uq_cash_reconciliations_revision")) {
+            code = "RECONCILIATION_CONFLICT";
+            key = "error.reconciliation.conflict";
         }
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.of(

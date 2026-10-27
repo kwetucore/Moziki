@@ -24,6 +24,9 @@ export type PaymentChannel = 'CASH' | 'AIRTEL_MONEY' | 'ORANGE_MONEY' | 'MPESA' 
 export type EntryDirection = 'DEBIT' | 'CREDIT';
 export type TransactionStatus = 'POSTED' | 'REVERSED';
 export type TransactionSource = 'WEB' | 'USSD' | 'SYSTEM';
+export type ReconciliationStatus = 'BALANCED' | 'DISCREPANCY';
+export type ReconciliationReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type ReconciliationDecision = 'APPROVED' | 'REJECTED';
 
 export interface UserProfile {
   id: string;
@@ -165,6 +168,116 @@ export interface ReconciliationRow {
   ledgerMinor: number;
   differenceMinor: number;
   consistent: boolean;
+}
+
+export interface ReconciliationEvidence {
+  id: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  sha256: string;
+  uploadedById?: string | null;
+  uploadedByName?: string | null;
+  createdAt: string;
+}
+
+export interface CashReconciliation {
+  id: string;
+  businessDate: string;
+  revision: number;
+  supersedesId?: string | null;
+  reportedById: string;
+  reportedByName?: string | null;
+  currency: string;
+  status: ReconciliationStatus;
+  countedCashMinor: number;
+  countedAirtelMinor: number;
+  countedOrangeMinor: number;
+  countedMpesaMinor: number;
+  bookCashMinor: number;
+  bookAirtelMinor: number;
+  bookOrangeMinor: number;
+  bookMpesaMinor: number;
+  cashDifferenceMinor: number;
+  airtelDifferenceMinor: number;
+  orangeDifferenceMinor: number;
+  mpesaDifferenceMinor: number;
+  totalCountedMinor: number;
+  totalBookMinor: number;
+  totalDifferenceMinor: number;
+  notes?: string | null;
+  createdAt: string;
+  reviewStatus: ReconciliationReviewStatus;
+  reviewedById?: string | null;
+  reviewedByName?: string | null;
+  reviewedAt?: string | null;
+  reviewNote?: string | null;
+  evidence: ReconciliationEvidence[];
+}
+
+export interface ReconciliationSnapshot {
+  id: string;
+  businessDate: string;
+  revision: number;
+  status: ReconciliationStatus;
+  totalCountedMinor: number;
+  totalBookMinor: number;
+  totalDifferenceMinor: number;
+  currency: string;
+  reportedByName?: string | null;
+  createdAt: string;
+  reviewStatus: ReconciliationReviewStatus;
+  reviewedByName?: string | null;
+  reviewedAt?: string | null;
+  reviewNote?: string | null;
+  evidence: ReconciliationEvidence[];
+}
+
+export interface TransparencyEvent {
+  id: string;
+  action: string;
+  actorName?: string | null;
+  summary: string;
+  createdAt: string;
+}
+
+export interface TransparencySummary {
+  today: string;
+  earliestBusinessDate: string;
+  lockHour: number;
+  submittedToday: boolean;
+  pendingReviewCount: number;
+  ledger: {
+    cashMinor: number;
+    airtelMinor: number;
+    orangeMinor: number;
+    mpesaMinor: number;
+  };
+  latestReconciliation: ReconciliationSnapshot | null;
+  recentReconciliations: ReconciliationSnapshot[];
+  reconciledDays: number;
+  balancedDays: number;
+  discrepancyDays: number;
+  absoluteDifferenceMinor: number;
+  auditEvents: number;
+  transactionsPosted: number;
+  reversals: number;
+  recentEvents: TransparencyEvent[];
+  beforeLock: boolean;
+}
+
+export interface SubmitReconciliationPayload {
+  businessDate: string;
+  countedCash: string;
+  countedAirtel: string;
+  countedOrange: string;
+  countedMpesa: string;
+  notes?: string | null;
+}
+
+export interface ReviewReconciliationPayload {
+  decision: ReconciliationDecision;
+  note?: string | null;
 }
 
 export interface PostTransactionPayload {

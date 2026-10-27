@@ -9,6 +9,7 @@ import { TransactionsPage } from '@/pages/TransactionsPage';
 import { MembersPage } from '@/pages/MembersPage';
 import { AccountsPage } from '@/pages/AccountsPage';
 import { AuditPage } from '@/pages/AuditPage';
+import { AccountabilityPage } from '@/pages/AccountabilityPage';
 
 function LoadingScreen() {
   return (
@@ -58,6 +59,7 @@ export default function App() {
               <Route index element={<DashboardPage />} />
               <Route path="transactions" element={<TransactionsPage />} />
               <Route path="accounts" element={<AccountsPage />} />
+              <Route path="accountability" element={<AccountabilityPage />} />
               <Route element={<RequireRole roles={['LEADER', 'AUDITOR']} />}>
                 <Route path="members" element={<MembersPage />} />
                 <Route path="audit" element={<AuditPage />} />

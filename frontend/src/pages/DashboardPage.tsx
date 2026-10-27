@@ -234,10 +234,10 @@ export function DashboardPage() {
             </Link>
           ) : (
             <Link
-              to="/transactions"
+              to="/accountability"
               className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-forest-800 hover:text-forest-950"
             >
-              {t('dashboard.viewAll')} <ArrowRightIcon size={14} />
+              {t('nav.accountability')} <ArrowRightIcon size={14} />
             </Link>
           )}
         </section>

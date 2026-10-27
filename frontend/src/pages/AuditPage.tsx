@@ -29,6 +29,8 @@ const ACTION_STYLES: Record<string, { tone: 'forest' | 'gold' | 'sky' | 'danger'
   TRANSACTION_REVERSED: { tone: 'danger', icon: AlertIcon },
   MEMBER_CREATED: { tone: 'gold', icon: UsersIcon },
   USER_LOGIN: { tone: 'sky', icon: ShieldIcon },
+  CASH_RECONCILIATION_SUBMITTED: { tone: 'gold', icon: LockIcon },
+  CASH_RECONCILIATION_CORRECTED: { tone: 'danger', icon: RefreshIcon },
 };
 
 export function AuditPage() {

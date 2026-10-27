@@ -184,3 +184,17 @@ export const MenuIcon = (props: IconProps) => (
     <path d="M4 7h16M4 12h16M4 17h16" />
   </Icon>
 );
+
+export const UploadIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 16V4" />
+    <path d="m7 9 5-5 5 5" />
+    <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+  </Icon>
+);
+
+export const PaperclipIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m20.5 11.5-8.9 8.9a5.5 5.5 0 0 1-7.8-7.8l9.6-9.6a3.7 3.7 0 0 1 5.2 5.2l-9.6 9.6a1.8 1.8 0 0 1-2.6-2.6l8.8-8.8" />
+  </Icon>
+);
